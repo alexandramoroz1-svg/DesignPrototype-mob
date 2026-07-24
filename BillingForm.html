@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Billing details — POC</title>
+<style>
+  :root{
+    --bg:#E9E9E9; --card:#FFFFFF; --ink:#1B1B1B; --muted:#8C8C8C;
+    --placeholder:#B4B4B4; --line:#D6D6D6; --line-ink:#C0C0C0;
+    --btn:#1B1B1B; --btn-off:#BEBEBE; --error:#E0472C; --amber:#E0A63C;
+    --nav:#F2F2F2; --green:#4CAF7D;
+    --font:-apple-system,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{font-family:var(--font);background:#c9cdd2;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;min-height:100vh;gap:14px;padding:20px 0;}
+  .stage{width:390px;height:800px;background:#000;border-radius:44px;padding:11px;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);position:relative;}
+  .viewport{position:absolute;inset:11px;border-radius:34px;overflow:hidden;background:var(--bg);}
+  .statusbar{height:52px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 26px 0 30px;font-size:15px;font-weight:600;background:#000;color:#fff;position:relative;z-index:60;}
+  .statusbar .r{display:flex;gap:6px;align-items:center;font-size:13px;}
+
+  .screen{position:absolute;top:52px;left:0;right:0;bottom:0;display:flex;flex-direction:column;
+    background:var(--bg);transition:transform .3s cubic-bezier(.4,.0,.2,1);}
+  #choice{z-index:10;}
+  #form{z-index:20;transform:translateX(100%);}
+  #form.show{transform:translateX(0);}
+  #address{z-index:30;transform:translateX(100%);}
+  #address.show{transform:translateX(0);}
+  #success{z-index:40;transform:translateX(100%);}
+  #success.show{transform:translateX(0);}
+
+  .navbar{height:52px;min-height:52px;background:var(--nav);display:flex;align-items:center;
+    justify-content:center;position:relative;border-bottom:1px solid #E2E2E2;}
+  .navbar .title{font-size:16px;font-weight:600;color:var(--ink);}
+  .navbar .left,.navbar .right{position:absolute;font-size:16px;color:var(--ink);
+    display:flex;align-items:center;gap:3px;cursor:pointer;font-weight:600;}
+  .navbar .left{left:16px;} .navbar .right{right:20px;}
+  .navbar .right.off{color:var(--placeholder);cursor:default;}
+  .chev{font-size:20px;line-height:1;margin-top:-1px;}
+
+  .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .pad{padding:22px 18px 20px;}
+  .hero-title{font-size:22px;font-weight:600;text-align:center;color:var(--ink);
+    line-height:1.28;margin:6px 24px 22px;}
+
+  .icon-circle{width:118px;height:118px;border-radius:50%;background:#fff;margin:8px auto 0;
+    display:flex;align-items:center;justify-content:center;}
+  .icon-circle svg{width:52px;height:52px;stroke:var(--ink);fill:none;stroke-width:1.6;}
+  .opt-group{margin-top:4px;border-radius:16px;overflow:hidden;background:#fff;}
+  .opt{padding:16px 18px;cursor:pointer;position:relative;border:2px solid transparent;}
+  .opt+ .opt{border-top:1px solid #ECECEC;}
+  .opt.sel{border-color:var(--ink);border-radius:14px;}
+  .opt-t{font-size:16px;color:var(--ink);margin-bottom:3px;}
+  .opt-d{font-size:13px;color:var(--muted);line-height:1.42;}
+
+  .footer{padding:14px 18px 20px;background:var(--bg);}
+  .btn{width:100%;border:none;border-radius:26px;padding:15px;font-size:16px;font-weight:600;
+    font-family:var(--font);background:var(--btn);color:#fff;cursor:pointer;}
+  .btn:disabled{background:var(--btn-off);cursor:default;}
+
+  .info-banner{background:#F3F3F3;border-radius:12px;padding:14px 14px;display:flex;gap:12px;margin-bottom:18px;}
+  .info-banner .ic{flex-shrink:0;width:22px;height:22px;border-radius:50%;border:1.5px solid #9a9a9a;
+    color:#9a9a9a;display:flex;align-items:center;justify-content:center;font-size:13px;font-style:italic;font-weight:700;}
+  .info-banner.amber .ic{border-color:var(--amber);color:var(--amber);}
+  .info-banner p{margin:0;font-size:13px;color:var(--muted);line-height:1.45;}
+  .info-banner .h{color:var(--ink);font-weight:600;display:block;margin-bottom:2px;}
+
+  .field{background:#fff;border-radius:14px;padding:12px 16px 10px;margin-bottom:6px;}
+  .field .lbl{font-size:12px;color:var(--muted);margin-bottom:3px;}
+  .field .inwrap{display:flex;align-items:center;border-bottom:1px solid var(--line-ink);}
+  .field input{flex:1;border:none;outline:none;font-family:var(--font);font-size:16px;
+    color:var(--ink);padding:2px 0 7px;background:transparent;}
+  .field input::placeholder{color:var(--placeholder);}
+  .field .counter{font-size:12px;color:var(--placeholder);padding-bottom:7px;padding-left:8px;}
+  .field.err .inwrap{border-bottom-color:var(--error);}
+  .field .msg{display:none;font-size:12px;color:var(--error);margin-top:6px;}
+  .field.err .msg{display:block;}
+  .gap{height:12px;}
+
+  .row{background:#fff;border-radius:14px;padding:13px 16px;margin-bottom:6px;cursor:pointer;
+    display:flex;align-items:center;justify-content:space-between;}
+  .row .rl .lbl{font-size:12px;color:var(--muted);margin-bottom:2px;}
+  .row .rl .val{font-size:15px;color:var(--ink);line-height:1.35;padding-right:8px;}
+  .row .rl .val.empty{color:var(--muted);}
+  .row.err .rl .val.empty{color:var(--error);}
+  .row .chevR{color:#BBB;font-size:20px;}
+  .helper{font-size:12px;color:var(--muted);line-height:1.45;margin:2px 4px 16px;}
+
+  .cbrow{background:#fff;border-radius:14px;padding:15px 16px;margin-bottom:6px;
+    display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+  .cbrow .t{font-size:15px;color:var(--ink);}
+  .cb{width:24px;height:24px;border-radius:6px;border:1.6px solid #BDBDBD;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;}
+  .cb.on{background:var(--ink);border-color:var(--ink);}
+  .cb svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.4;display:none;}
+  .cb.on svg{display:block;}
+
+  .terms{display:flex;gap:12px;padding:16px 6px 4px;align-items:flex-start;cursor:pointer;}
+  .terms .cb{margin-top:1px;}
+  .terms .tt{font-size:13px;color:var(--muted);line-height:1.5;}
+  .terms .tt b{color:var(--ink);font-weight:600;}
+  .terms-msg{display:none;font-size:12px;color:var(--error);margin:2px 0 0 42px;}
+  .terms-msg.show{display:block;}
+
+  .review{display:flex;gap:8px;align-items:flex-start;padding:14px 6px 0;}
+  .review .ic{flex-shrink:0;width:18px;height:18px;border-radius:50%;border:1.3px solid #A5A5A5;
+    color:#A5A5A5;display:flex;align-items:center;justify-content:center;font-size:11px;font-style:italic;font-weight:700;margin-top:1px;}
+  .review p{margin:0;font-size:13px;color:var(--muted);line-height:1.45;}
+
+  .cond{max-height:0;overflow:hidden;transition:max-height .3s ease;}
+  .cond.show{max-height:340px;}
+
+  #success .pad{text-align:center;padding-top:40px;}
+  .succ-ic{width:120px;height:120px;border-radius:50%;background:#fff;margin:20px auto 20px;
+    display:flex;align-items:center;justify-content:center;position:relative;}
+  .succ-ic svg{width:56px;height:56px;stroke:var(--ink);fill:none;stroke-width:1.5;}
+  .succ-badge{position:absolute;right:20px;bottom:16px;width:34px;height:34px;border-radius:50%;
+    background:var(--green);display:flex;align-items:center;justify-content:center;}
+  .succ-badge svg{width:16px;height:16px;stroke:#fff;stroke-width:3;}
+  .succ-t{font-size:20px;font-weight:600;color:var(--ink);margin:0 20px 14px;}
+  .succ-d{font-size:14px;color:var(--muted);line-height:1.5;margin:0 14px 14px;}
+
+  .loader{position:absolute;inset:52px 0 0;background:rgba(233,233,233,.55);z-index:50;
+    display:none;align-items:center;justify-content:center;}
+  .loader.show{display:flex;}
+  .spin{width:46px;height:46px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 14px rgba(0,0,0,.12);}
+  .spin::after{content:"";width:22px;height:22px;border:2.5px solid #ccc;border-top-color:#555;
+    border-radius:50%;animation:sp .7s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+
+  /* exit dialog */
+  .dimmer{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:70;display:none;
+    align-items:center;justify-content:center;}
+  .dimmer.show{display:flex;}
+  .dialog{width:270px;background:#fff;border-radius:16px;overflow:hidden;text-align:center;font-family:var(--font);}
+  .dialog .dt{font-size:17px;font-weight:700;color:var(--ink);padding:20px 20px 4px;}
+  .dialog .dd{font-size:13px;color:var(--ink);padding:0 20px 16px;line-height:1.4;}
+  .dialog .db{border-top:1px solid #E2E2E2;padding:13px;font-size:17px;cursor:pointer;}
+  .dialog .db.exit{color:var(--error);}
+  .dialog .db.cancel{color:var(--ink);}
+
+  .reset{font-size:12px;color:#5b6470;background:#fff;border:1px solid #cfd4da;border-radius:8px;
+    padding:7px 14px;cursor:pointer;font-family:var(--font);}
+  .hint{font-size:11px;color:#7a828c;max-width:390px;text-align:center;line-height:1.5;}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="viewport">
+    <div class="statusbar"><span>9:41</span><span class="r">••••&nbsp; 🌐 &nbsp;▮</span></div>
+
+    <!-- CHOICE -->
+    <div class="screen" id="choice">
+      <div class="navbar"><span class="left" id="choiceCancel">Cancel</span><span class="title">Billing details</span></div>
+      <div class="scroll"><div class="pad">
+        <div class="icon-circle">
+          <svg viewBox="0 0 24 24"><path d="M6 3h11a1 1 0 0 1 1 1v16l-2-1.2L14 20l-2-1.2L10 20l-2-1.2L6 20V4a1 1 0 0 1 0-1z"/><path d="M9 8h6M9 11h6M9 14h4"/></svg>
+        </div>
+        <div class="hero-title">Currently, services come with receipts only. Need a tax invoice instead?</div>
+        <div class="opt-group">
+          <div class="opt" data-v="receipt">
+            <div class="opt-t">A receipt is enough</div>
+            <div class="opt-d">Transaction confirmation sent to your email — not valid for financial reporting</div>
+          </div>
+          <div class="opt" data-v="invoice">
+            <div class="opt-t">I need a tax invoice</div>
+            <div class="opt-d">Official document for business accounting, that includes company and tax details</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="footer"><button class="btn" id="nextBtn" disabled>Next</button></div>
+    </div>
+
+    <!-- FORM -->
+    <div class="screen" id="form">
+      <div class="navbar"><span class="left" id="formBack"><span class="chev">‹</span>Back</span><span class="title">Billing details</span></div>
+      <div class="scroll"><div class="pad">
+        <div class="hero-title" style="font-size:19px;margin-top:0;">Information required to receive tax invoices</div>
+
+        <div class="field" id="f-legal">
+          <div class="lbl">Legal name</div>
+          <div class="inwrap"><input id="legal" placeholder="Taxpayer or company name" maxlength="200"><span class="counter" id="legalCount">0/200</span></div>
+          <div class="msg" id="m-legal">Field cannot be blank</div>
+        </div>
+        <div class="gap"></div>
+
+        <div class="row" id="addrRow">
+          <div class="rl"><div class="lbl">Billing address</div><div class="val empty" id="addrVal">Information not filled</div></div>
+          <div class="chevR">›</div>
+        </div>
+        <div class="helper">Selected country will determine prices and VAT rate on invoice</div>
+
+        <div class="field" id="f-tax">
+          <div class="lbl">Tax ID</div>
+          <div class="inwrap"><input id="tax" placeholder="Company or personal taxpayer number" maxlength="16"></div>
+          <div class="msg" id="m-tax">Field cannot be blank</div>
+        </div>
+        <div class="gap"></div>
+
+        <div class="cbrow" id="vatToggle">
+          <span class="t">My business is VAT registered</span>
+          <span class="cb" id="vatCb"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></svg></span>
+        </div>
+
+        <div class="cond" id="vatCond">
+          <div class="field" id="f-vat">
+            <div class="lbl">VAT number</div>
+            <div class="inwrap"><input id="vat" placeholder="Issued for VAT purposes" maxlength="16"></div>
+            <div class="msg" id="m-vat">Field cannot be blank</div>
+          </div>
+          <div class="info-banner amber">
+            <span class="ic">i</span>
+            <p><span class="h">VAT number verification may take up to 9 hours</span>During this time, new services cannot be activated</p>
+          </div>
+        </div>
+        <div class="gap"></div>
+
+        <div class="field" id="f-email">
+          <div class="lbl">Email</div>
+          <div class="inwrap"><input id="email" placeholder="For services-related mails" inputmode="email"></div>
+          <div class="msg" id="m-email">Field cannot be blank</div>
+        </div>
+
+        <div class="terms" id="termsRow">
+          <span class="cb" id="termsCb"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></svg></span>
+          <span class="tt">I have read and agree to the <b>Enhanced Ajax Services: Technical and other Terms of Services</b></span>
+        </div>
+        <div class="terms-msg" id="m-terms">Please accept the terms to proceed</div>
+
+        <div class="review"><span class="ic">i</span><p>Please review all details — they will appear on invoices exactly as entered</p></div>
+      </div></div>
+      <div class="footer"><button class="btn" id="submitBtn" disabled>Submit</button></div>
+      <div class="loader" id="loader"><div class="spin"></div></div>
+    </div>
+
+    <!-- ADDRESS child -->
+    <div class="screen" id="address">
+      <div class="navbar"><span class="left" id="addrBack"><span class="chev">‹</span>Back</span><span class="title">Billing address</span><span class="right off" id="addrDone">Done</span></div>
+      <div class="scroll"><div class="pad">
+        <div class="field"><div class="lbl">Location</div><div class="inwrap"><input class="a" id="a-loc" placeholder="Street, building, apartment/office"></div></div>
+        <div class="gap"></div>
+        <div class="field"><div class="lbl">City</div><div class="inwrap"><input class="a" id="a-city" placeholder="Specify city/town"></div></div>
+        <div class="gap"></div>
+        <div class="field"><div class="lbl">Region</div><div class="inwrap"><input class="a" id="a-region" placeholder="Area, state, territory"></div></div>
+        <div class="gap"></div>
+        <div class="field"><div class="lbl">Country</div><div class="inwrap"><input class="a" id="a-country" placeholder="Specify the country"></div></div>
+        <div class="gap"></div>
+        <div class="field"><div class="lbl">Postcode</div><div class="inwrap"><input class="a" id="a-post" placeholder="ZIP- or postal code"></div></div>
+      </div></div>
+    </div>
+
+    <!-- SUCCESS -->
+    <div class="screen" id="success">
+      <div class="navbar"><span class="title">Billing details</span></div>
+      <div class="scroll"><div class="pad">
+        <div class="succ-ic">
+          <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M9 12h6M9 15h6M9 9h3"/></svg>
+          <span class="succ-badge"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></svg></span>
+        </div>
+        <div class="succ-t">Business account is set</div>
+        <div class="succ-d">Tax invoices will be issued for all newly activated services — you can update billing info in the menu anytime.</div>
+        <div class="succ-d">Previously activated services are not affected and will receive receipts only.</div>
+      </div></div>
+      <div class="footer"><button class="btn" id="gotIt">Got it</button></div>
+    </div>
+
+    <!-- EXIT DIALOG -->
+    <div class="dimmer" id="dimmer">
+      <div class="dialog">
+        <div class="dt">Exit without saving?</div>
+        <div class="dd">All changes you've made will not be saved</div>
+        <div class="db exit" id="dlgExit">Exit</div>
+        <div class="db cancel" id="dlgCancel">Cancel</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<button class="reset" id="resetBtn">↺ Reset prototype</button>
+<div class="hint">POC — empty-помилки лише на Submit; формат/довжина — на blur; після першої помилки live-виправлення. Back з введеними даними → діалог виходу. VAT «00000000» імітує серверну «Incorrect value».</div>
+
+<script>
+(function(){
+  const $=s=>document.querySelector(s);
+  const choice=$('#choice'),form=$('#form'),address=$('#address'),success=$('#success');
+
+  /* ---------- CHOICE ---------- */
+  let picked=null;
+  document.querySelectorAll('.opt').forEach(o=>{
+    o.addEventListener('click',()=>{
+      document.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel'));
+      o.classList.add('sel'); picked=o.dataset.v; $('#nextBtn').disabled=false;
+    });
+  });
+  $('#nextBtn').addEventListener('click',()=>{
+    if(picked==='invoice'){ form.classList.add('show'); }
+    else { choice.querySelector('.pad').style.opacity=.4; setTimeout(resetAll,600); }
+  });
+  $('#choiceCancel').addEventListener('click',resetAll);
+
+  /* ---------- STATE ---------- */
+  let submitAttempted=false;
+  let addr=null;
+  const legal=$('#legal'),tax=$('#tax'),vat=$('#vat'),email=$('#email');
+  const vatCb=$('#vatCb'),termsCb=$('#termsCb');
+  let vatOn=false, termsOn=false;
+  const errShown={legal:false,tax:false,vat:false,email:false}; // has this field's error been shown yet
+
+  legal.addEventListener('input',()=>{ $('#legalCount').textContent=legal.value.length+'/200'; onInput('legal'); });
+
+  /* ---------- VALIDATORS (split: empty vs format) ---------- */
+  // format/length only — assumes field is non-empty
+  function fmtLegal(){ const v=legal.value.trim(); if(v&&v.length<3) return 'from 3 to 200 characters'; return null; }
+  function fmtTax(){ const v=tax.value.trim(); if(v&&(v.length<8||v.length>16)) return 'Should be from 8 to 16 symbols'; return null; }
+  function fmtVat(){ const v=vat.value.trim(); if(!vatOn||!v) return null;
+    if(v.length<8||v.length>16) return 'Should be from 8 to 16 symbols';
+    if(v==='00000000') return 'Incorrect value'; return null; }
+  function fmtEmail(){ const v=email.value.trim(); if(v&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Invalid format. Please check your data.'; return null; }
+  // full (empty + format) — used on submit
+  function fullLegal(){ if(!legal.value.trim()) return 'Field cannot be blank'; return fmtLegal(); }
+  function fullTax(){ if(!tax.value.trim()) return 'Field cannot be blank'; return fmtTax(); }
+  function fullVat(){ if(!vatOn) return null; if(!vat.value.trim()) return 'Field cannot be blank'; return fmtVat(); }
+  function fullEmail(){ if(!email.value.trim()) return 'Field cannot be blank'; return fmtEmail(); }
+  function fullAddr(){ return addr? null:'Information not filled'; }
+  function fullTerms(){ return termsOn? null:'Please accept the terms to proceed'; }
+
+  function isValid(){ return !fullLegal()&&!fullTax()&&!fullVat()&&!fullEmail()&&!fullAddr()&&!fullTerms(); }
+  function anyInput(){ return legal.value||tax.value||email.value||(vatOn&&vat.value)||addr||vatOn||termsOn; }
+  function dirty(){ return !!(legal.value||tax.value||email.value||vat.value||addr||vatOn||termsOn); }
+  function addrDirty(){ return [...document.querySelectorAll('.a')].some(i=>i.value.trim()); }
+
+  function setErr(fieldSel,text){ const f=$(fieldSel);
+    if(text){ f.classList.add('err'); f.querySelector('.msg').textContent=text; } else f.classList.remove('err'); }
+
+  function anyVisibleError(){
+    return document.querySelector('#form .field.err, #form .row.err, #form .terms-msg.show')!==null;
+  }
+  function updateSubmit(){ const btn=$('#submitBtn');
+    if(anyVisibleError()){ btn.disabled=true; return; }        // any shown error -> disabled
+    if(!submitAttempted) btn.disabled=!anyInput();             // before submit: active once there's input
+    else btn.disabled=!isValid();                              // after submit: active only when fully valid
+  }
+
+  // BLUR: show format/length errors only (never empty). If error shown -> remember for live mode.
+  function onBlur(name){
+    let e=null;
+    if(name==='legal') e=fmtLegal(); if(name==='tax') e=fmtTax();
+    if(name==='vat') e=fmtVat();     if(name==='email') e=fmtEmail();
+    // if submit already attempted, empty errors are in play too
+    if(submitAttempted){
+      if(name==='legal') e=fullLegal(); if(name==='tax') e=fullTax();
+      if(name==='vat') e=fullVat();     if(name==='email') e=fullEmail();
+    }
+    if(e) errShown[name]=true;
+    setErr('#f-'+name, e);
+    updateSubmit();
+  }
+  // INPUT: live-clear once an error has been shown (reward early). Also live after submit.
+  function onInput(name){
+    if(errShown[name]||submitAttempted){
+      let e; if(submitAttempted){
+        e = name==='legal'?fullLegal():name==='tax'?fullTax():name==='vat'?fullVat():fullEmail();
+      } else {
+        e = name==='legal'?fmtLegal():name==='tax'?fmtTax():name==='vat'?fmtVat():fmtEmail();
+      }
+      setErr('#f-'+name, e);
+    }
+    updateSubmit();
+  }
+
+  [['legal',legal],['tax',tax],['vat',vat],['email',email]].forEach(([n,el])=>{
+    el.addEventListener('input',()=>{ if(n!=='legal') onInput(n); });
+    el.addEventListener('blur',()=>onBlur(n));
+  });
+
+  $('#vatToggle').addEventListener('click',()=>{
+    vatOn=!vatOn; vatCb.classList.toggle('on',vatOn); $('#vatCond').classList.toggle('show',vatOn);
+    if(!vatOn){ errShown.vat=false; setErr('#f-vat',null); } updateSubmit();
+  });
+  $('#termsRow').addEventListener('click',()=>{
+    termsOn=!termsOn; termsCb.classList.toggle('on',termsOn);
+    if(submitAttempted) $('#m-terms').classList.toggle('show',!termsOn); updateSubmit();
+  });
+
+  /* ---------- ADDRESS ---------- */
+  const aInputs=[...document.querySelectorAll('.a')];
+  aInputs.forEach(i=>i.addEventListener('input',()=>{ $('#addrDone').classList.toggle('off',!addrDirty()); }));
+  $('#addrRow').addEventListener('click',()=>address.classList.add('show'));
+  $('#addrDone').addEventListener('click',()=>{
+    if(!addrDirty()) return;
+    const parts=[ $('#a-loc').value, $('#a-city').value, $('#a-region').value, $('#a-post').value, $('#a-country').value ]
+      .map(s=>s.trim()).filter(Boolean);
+    addr=parts.join(', ');
+    const v=$('#addrVal'); v.textContent=addr; v.classList.remove('empty');
+    $('#addrRow').classList.remove('err'); address.classList.remove('show');
+    updateSubmit();
+  });
+
+  /* ---------- EXIT DIALOG ---------- */
+  let exitTarget=null; // 'form' | 'address'
+  function askExit(target){ exitTarget=target; $('#dimmer').classList.add('show'); }
+  $('#formBack').addEventListener('click',()=>{ if(dirty()) askExit('form'); else form.classList.remove('show'); });
+  $('#addrBack').addEventListener('click',()=>{ if(addrDirty()) askExit('address'); else address.classList.remove('show'); });
+  $('#dlgCancel').addEventListener('click',()=>$('#dimmer').classList.remove('show'));
+  $('#dlgExit').addEventListener('click',()=>{
+    $('#dimmer').classList.remove('show');
+    if(exitTarget==='address'){ aInputs.forEach(i=>i.value=''); $('#addrDone').classList.add('off'); address.classList.remove('show'); }
+    else { form.classList.remove('show'); setTimeout(clearForm,320); }
+  });
+
+  /* ---------- SUBMIT ---------- */
+  $('#submitBtn').addEventListener('click',()=>{
+    submitAttempted=true;
+    setErr('#f-legal',fullLegal()); setErr('#f-tax',fullTax());
+    setErr('#f-vat',fullVat());     setErr('#f-email',fullEmail());
+    $('#addrRow').classList.toggle('err',!!fullAddr());
+    $('#m-terms').classList.toggle('show',!!fullTerms());
+    ['legal','tax','vat','email'].forEach(n=>{ if($('#f-'+n).classList.contains('err')) errShown[n]=true; });
+    updateSubmit();
+    if(isValid()){
+      $('#loader').classList.add('show');
+      setTimeout(()=>{ $('#loader').classList.remove('show'); success.classList.add('show'); },1300);
+    } else {
+      const first=document.querySelector('#form .err, #form .terms-msg.show, #form .row.err');
+      if(first) first.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+  });
+  $('#gotIt').addEventListener('click',resetAll);
+
+  /* ---------- RESET ---------- */
+  function clearForm(){
+    [legal,tax,vat,email].forEach(i=>i.value=''); aInputs.forEach(i=>i.value='');
+    $('#legalCount').textContent='0/200';
+    vatOn=false;termsOn=false;submitAttempted=false;addr=null;
+    errShown.legal=errShown.tax=errShown.vat=errShown.email=false;
+    vatCb.classList.remove('on');termsCb.classList.remove('on');$('#vatCond').classList.remove('show');
+    ['#f-legal','#f-tax','#f-vat','#f-email'].forEach(s=>$(s).classList.remove('err'));
+    $('#addrRow').classList.remove('err'); $('#m-terms').classList.remove('show');
+    const v=$('#addrVal'); v.textContent='Information not filled'; v.classList.add('empty');
+    $('#addrDone').classList.add('off'); $('#submitBtn').disabled=true;
+  }
+  function resetAll(){
+    $('#dimmer').classList.remove('show');
+    success.classList.remove('show'); address.classList.remove('show'); form.classList.remove('show');
+    setTimeout(()=>{
+      picked=null; $('#nextBtn').disabled=true;
+      document.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel'));
+      choice.querySelector('.pad').style.opacity=1; clearForm();
+    },320);
+  }
+  $('#resetBtn').addEventListener('click',resetAll);
+})();
+</script>
+</body>
+</html>
